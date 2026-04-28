@@ -1,0 +1,65 @@
+# Minimal Axolotl config matching Forseti v6 production CPT
+# This reproduces the exact memory profile that fails on x1103 racks.
+#
+# The key settings that drive memory pressure:
+#   - FSDP2 with reshard_after_forward (all-gather peak = full layer params)
+#   - liger fused linear cross-entropy (changes logits allocation pattern)
+#   - AdamW fused in bf16 (optimizer states in HBM)
+#   - seq_len=4096 with micro_batch_size=1
+
+base_model: /scratch/project_465002901/models/gemma-4-31b-pt
+# Override MODEL_PATH env var to change this
+
+model_type: AutoModelForCausalLM
+tokenizer_type: AutoTokenizer
+
+load_in_8bit: false
+load_in_4bit: false
+
+# Dataset: random tokens (just need memory pressure, not real training)
+datasets:
+  - path: repro_dataset
+    type: completion
+
+sequence_len: 4096
+sample_packing: false
+
+# FSDP2 — this is the critical setting
+fsdp_config:
+  fsdp_version: 2
+  reshard_after_forward: true
+
+# Mixed precision
+bf16: true
+tf32: false
+
+# Optimizer — fused AdamW allocates optimizer states on GPU
+optimizer: adamw_torch_fused
+learning_rate: 7.5e-6
+lr_scheduler: cosine
+weight_decay: 0.01
+warmup_steps: 50
+
+# Batch size
+micro_batch_size: 1
+gradient_accumulation_steps: 16
+
+# Liger kernel — changes memory allocation pattern for logits
+plugins:
+  - liger_kernel
+
+liger_fused_linear_cross_entropy: true
+liger_rope: true
+liger_rms_norm: true
+liger_swiglu: true
+
+# Training
+num_epochs: 1
+max_steps: 3
+
+# Logging
+logging_steps: 1
+save_steps: 999999
+eval_steps: 999999
+
+output_dir: /tmp/repro-output

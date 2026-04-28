@@ -1,0 +1,7 @@
+# Venv overlay for lumi-multitorch-latest.sif (PyTorch 2.9.1+rocm6.4)
+# Install with: pip install --no-deps -r requirements.txt
+transformers==5.5.0
+liger-kernel==0.7.0
+axolotl==0.16.1
+axolotl-contribs-lgpl==0.0.7
+torchft==0.1.1
