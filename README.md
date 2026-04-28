@@ -84,12 +84,27 @@ sbatch --constraint=x1103 repro.sh
 
 ## Production Job Evidence
 
-| Job ID | Rack | Node | Result |
-|--------|------|------|--------|
-| (see support email) | x1103 | (see sacct) | Hung 42 min, killed |
-| (see support email) | x1205 | (see sacct) | Completed normally |
+| Job ID | Nodes | Racks | Duration | Result |
+|--------|-------|-------|----------|--------|
+| 17775706 | nid005427 + nid006650 | x1103 + x1301 | 42 min | **Hung**, cancelled manually |
+| 17777228 | nid006455 + nid006456 | x1205 + x1205 | 18h 11m | **Success**, ran until manually cancelled |
 
-Same SLURM script, same container, same config. Only difference: `--constraint`.
+Same SLURM script, same container, same config, same day (2026-04-23).
+Only difference: node assignment.
+
+All subsequent v6 runs use `--constraint=x1205` and succeed (jobs 17804941, 17805435, 17833711, 17848763, 17890097).
+
+## Reproduction Attempts
+
+Single-node repro tests (this repo) do **not** reproduce the issue. Both x1103 and x1205 nodes behave identically in:
+- Simple allocation tests (52 GB per GCD)
+- Synthetic 31B model with FSDP2
+- Axolotl + real Gemma 4 31B + FSDP2 + liger-kernel
+
+This suggests the issue may be specific to:
+1. **Multi-node RCCL** (inter-node CXI communication, not intra-node)
+2. **Specific nodes** (nid005427, not all x1103 nodes)
+3. **Transient state** (driver/firmware, since resolved)
 
 ## What We Think Is Happening
 
